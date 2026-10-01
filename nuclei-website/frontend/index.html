@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scan Console</title>
+<style>
+  :root{
+    --bg:#0B1210;
+    --panel:#111A17;
+    --panel-2:#16201C;
+    --line:#233029;
+    --text:#E7EEE9;
+    --muted:#8FA398;
+    --accent:#D9A441;
+    --crit:#D64545;
+    --high:#E07A3F;
+    --med:#D9A441;
+    --low:#4E9B86;
+    --info:#5C7A73;
+    --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:40px 20px 80px;}
+  header{margin-bottom:36px;}
+  header h1{
+    font-size:28px;
+    font-weight:600;
+    letter-spacing:-0.02em;
+    margin:0 0 6px;
+  }
+  header p{color:var(--muted);margin:0;font-size:14px;}
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:22px;
+    margin-bottom:28px;
+  }
+  .panel h2{font-size:14px;font-weight:600;margin:0 0 16px;color:var(--muted);}
+
+  form{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:6px;flex:1;min-width:220px;}
+  .field label{font-size:12px;color:var(--muted);}
+  input, select{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:10px 12px;
+    border-radius:4px;
+    font-size:14px;
+    font-family:var(--mono);
+  }
+  input:focus, select:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  button{
+    background:var(--accent);
+    color:#141008;
+    border:none;
+    padding:11px 18px;
+    border-radius:4px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  button:hover{filter:brightness(1.08);}
+  button:disabled{opacity:0.5;cursor:default;}
+  button.ghost{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--text);
+    font-weight:400;
+  }
+
+  .error{color:var(--crit);font-size:13px;margin-top:10px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{
+    text-align:left;
+    color:var(--muted);
+    font-weight:500;
+    padding:8px 10px;
+    border-bottom:1px solid var(--line);
+    font-size:12px;
+  }
+  td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top;}
+  tr.scan-row{cursor:pointer;}
+  tr.scan-row:hover{background:var(--panel-2);}
+  .mono{font-family:var(--mono);font-size:12.5px;}
+
+  .badge{
+    display:inline-block;
+    padding:2px 8px;
+    border-radius:100px;
+    font-size:11px;
+    font-weight:600;
+    text-transform:lowercase;
+  }
+  .status-queued{background:#2A2E1F;color:#C9C77A;}
+  .status-running{background:#22303A;color:#7FB6D9;}
+  .status-completed{background:#1D2E24;color:#6FCB9A;}
+  .status-failed{background:#301D1D;color:#E08787;}
+
+  .sev{
+    display:inline-block;
+    padding:2px 8px;
+    border-radius:3px;
+    font-size:11px;
+    font-weight:600;
+    color:#141008;
+  }
+  .sev-critical{background:var(--crit);color:#fff;}
+  .sev-high{background:var(--high);color:#141008;}
+  .sev-medium{background:var(--med);color:#141008;}
+  .sev-low{background:var(--low);color:#eafbf5;}
+  .sev-info{background:var(--info);color:#eafbf5;}
+
+  .findings-wrap{padding:0 10px 16px;}
+  .findings-wrap h3{font-size:12px;color:var(--muted);margin:14px 0 8px;}
+  .downloads{display:flex;gap:8px;margin-top:12px;}
+  .downloads a{
+    font-size:12px;
+    color:var(--accent);
+    text-decoration:none;
+    border:1px solid var(--line);
+    padding:6px 10px;
+    border-radius:4px;
+    font-family:var(--mono);
+  }
+  .downloads a:hover{border-color:var(--accent);}
+
+  .empty{color:var(--muted);font-size:13px;padding:20px 0;text-align:center;}
+
+  @media (max-width:640px){
+    form{flex-direction:column;align-items:stretch;}
+    .field{min-width:0;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Scan Console</h1>
+    <p>Local Nuclei runs, queued through your backend and stored for review.</p>
+  </header>
+
+  <section class="panel">
+    <h2>New scan</h2>
+    <form id="scan-form">
+      <div class="field">
+        <label for="target">Target URL</label>
+        <input id="target" type="text" placeholder="http://juice-shop:3000" required>
+      </div>
+      <div class="field" style="flex:0 0 180px;">
+        <label for="profile">Profile</label>
+        <select id="profile"></select>
+      </div>
+      <button type="submit" id="submit-btn">Start scan</button>
+    </form>
+    <div class="error" id="form-error" style="display:none;"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Scans</h2>
+    <table id="scans-table">
+      <thead>
+        <tr>
+          <th>Scan ID</th>
+          <th>Target</th>
+          <th>Profile</th>
+          <th>Status</th>
+          <th>Findings</th>
+          <th>Started</th>
+        </tr>
+      </thead>
+      <tbody id="scans-body"></tbody>
+    </table>
+    <div class="empty" id="scans-empty" style="display:none;">No scans yet — start one above.</div>
+  </section>
+</div>
+
+<script>
+const API = "http://localhost:8000";
+
+const form = document.getElementById("scan-form");
+const profileSelect = document.getElementById("profile");
+const scansBody = document.getElementById("scans-body");
+const scansEmpty = document.getElementById("scans-empty");
+const formError = document.getElementById("form-error");
+const submitBtn = document.getElementById("submit-btn");
+
+let expandedScanId = null;
+let pollTimer = null;
+
+async function loadProfiles(){
+  try{
+    const res = await fetch(`${API}/api/profiles`);
+    const profiles = await res.json();
+    profileSelect.innerHTML = Object.keys(profiles)
+      .map(name => `<option value="${name}">${name}</option>`).join("");
+  }catch(e){
+    profileSelect.innerHTML = `<option value="basic">basic</option>`;
+  }
+}
+
+function fmtTime(iso){
+  if(!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleString();
+}
+
+function sevBadge(sev){
+  const s = (sev || "info").toLowerCase();
+  return `<span class="sev sev-${s}">${s}</span>`;
+}
+
+function statusBadge(status){
+  return `<span class="badge status-${status}">${status}</span>`;
+}
+
+async function loadScans(){
+  try{
+    const res = await fetch(`${API}/api/scans`);
+    const scans = await res.json();
+    renderScans(scans);
+    const anyActive = scans.some(s => s.status === "queued" || s.status === "running");
+    if(anyActive && !pollTimer){
+      pollTimer = setInterval(loadScans, 2500);
+    }else if(!anyActive && pollTimer){
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }catch(e){
+    scansEmpty.style.display = "block";
+    scansEmpty.textContent = "Could not reach the backend at " + API;
+  }
+}
+
+function renderScans(scans){
+  if(scans.length === 0){
+    scansBody.innerHTML = "";
+    scansEmpty.style.display = "block";
+    scansEmpty.textContent = "No scans yet — start one above.";
+    return;
+  }
+  scansEmpty.style.display = "none";
+  scansBody.innerHTML = scans.map(scan => `
+    <tr class="scan-row" data-id="${scan.scan_id}">
+      <td class="mono">${scan.scan_id}</td>
+      <td class="mono">${scan.target}</td>
+      <td>${scan.profile}</td>
+      <td>${statusBadge(scan.status)}</td>
+      <td>${scan.total_findings ?? 0}</td>
+      <td>${fmtTime(scan.started_at)}</td>
+    </tr>
+    <tr class="findings-row" id="findings-${scan.scan_id}" style="display:none;">
+      <td colspan="6"><div class="findings-wrap" id="findings-content-${scan.scan_id}"></div></td>
+    </tr>
+  `).join("");
+
+  document.querySelectorAll(".scan-row").forEach(row => {
+    row.addEventListener("click", () => toggleFindings(row.dataset.id));
+  });
+}
+
+async function toggleFindings(scanId){
+  const row = document.getElementById(`findings-${scanId}`);
+  if(expandedScanId === scanId){
+    row.style.display = "none";
+    expandedScanId = null;
+    return;
+  }
+  if(expandedScanId){
+    const prev = document.getElementById(`findings-${expandedScanId}`);
+    if(prev) prev.style.display = "none";
+  }
+  expandedScanId = scanId;
+  row.style.display = "table-row";
+  const content = document.getElementById(`findings-content-${scanId}`);
+  content.innerHTML = `<div class="empty">Loading findings…</div>`;
+
+  try{
+    const res = await fetch(`${API}/api/scans/${scanId}/findings`);
+    const findings = await res.json();
+    if(findings.length === 0){
+      content.innerHTML = `<div class="empty">No findings recorded for this scan.</div>` + downloadsHtml(scanId);
+      return;
+    }
+    content.innerHTML = `
+      <h3>Findings (${findings.length})</h3>
+      <table>
+        <thead><tr><th>Severity</th><th>Name</th><th>Template</th><th>Matched at</th></tr></thead>
+        <tbody>
+          ${findings.map(f => `
+            <tr>
+              <td>${sevBadge(f.severity)}</td>
+              <td>${f.name || "—"}</td>
+              <td class="mono">${f.template_id || "—"}</td>
+              <td class="mono">${f.matched_at || "—"}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+      ${downloadsHtml(scanId)}
+    `;
+  }catch(e){
+    content.innerHTML = `<div class="empty">Could not load findings.</div>`;
+  }
+}
+
+function downloadsHtml(scanId){
+  return `
+    <div class="downloads">
+      <a href="${API}/api/scans/${scanId}/results?fmt=jsonl" target="_blank">JSONL</a>
+      <a href="${API}/api/scans/${scanId}/results?fmt=json" target="_blank">JSON</a>
+      <a href="${API}/api/scans/${scanId}/results?fmt=sarif" target="_blank">SARIF</a>
+    </div>
+  `;
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  formError.style.display = "none";
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Starting…";
+
+  const target = document.getElementById("target").value.trim();
+  const profile = profileSelect.value;
+
+  try{
+    const res = await fetch(`${API}/api/scans`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({target, profile})
+    });
+    if(!res.ok){
+      const err = await res.json().catch(() => ({detail: "request failed"}));
+      throw new Error(err.detail || "request failed");
+    }
+    document.getElementById("target").value = "";
+    loadScans();
+  }catch(err){
+    formError.textContent = err.message;
+    formError.style.display = "block";
+  }finally{
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Start scan";
+  }
+});
+
+loadProfiles();
+loadScans();
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/results:/app/results
+      - ./backend/scans.db:/app/scans.db
+    restart: unless-stopped
+
+  frontend:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Intentionally-vulnerable practice target, only for local scanning tests.
+  # Remove this service if you're pointing scans at something else.
+  juice-shop:
+    image: bkimminich/juice-shop
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
